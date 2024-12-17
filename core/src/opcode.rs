@@ -10,7 +10,7 @@ pub struct Opcode(pub u8);
 impl core::fmt::Display for Opcode {
 	fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
 		let s = self.as_str().unwrap_or("[UNKNOWN]");
-		write!(f, "0x{:x} / {}", self.0, s)
+		write!(f, "0x{:02x} / {}", self.0, s)
 	}
 }
 
