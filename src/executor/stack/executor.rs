@@ -1319,7 +1319,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		opcode: Opcode,
 		stack: &Stack,
 	) -> Result<(), ExitError> {
-		log::debug!(target: "evm", "Running opcode: {:?} ({}), Pre gas-left: {:?}", opcode, opcode, self.state.metadata().gasometer.gas());
+		log::debug!(target: "evm", "Running opcode: {}, Pre gas-left: {:?}", opcode, self.state.metadata().gasometer.gas());
 
 		if let Some(cost) = gasometer::static_opcode_cost(opcode) {
 			self.state.metadata_mut().gasometer.record_cost(cost)?;
@@ -1333,6 +1333,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 				self.config,
 				self,
 			)?;
+
+			if opcode == Opcode::CREATE {
+				log::debug!(target: "evm", "create: {:?} {:?} {:?}", gas_cost, target, memory_cost);
+			}
 
 			let gasometer = &mut self.state.metadata_mut().gasometer;
 			gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
