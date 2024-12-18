@@ -141,6 +141,8 @@ impl Machine {
 	#[inline]
 	/// Step the machine, executing one opcode. It then returns.
 	pub fn step(&mut self) -> Result<(), Capture<ExitReason, Trap>> {
+		log::debug!(target: "evm", "machine.step start");
+
 		let position = *self
 			.position
 			.as_ref()

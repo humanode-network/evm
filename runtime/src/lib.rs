@@ -150,6 +150,7 @@ impl Runtime {
 		&'a mut self,
 		handler: &mut H,
 	) -> Result<(), Capture<ExitReason, Resolve<'a, H>>> {
+		log::debug!(target: "evm", "standalone step");
 		step!(self, handler, return Err; Ok)
 	}
 
@@ -159,6 +160,7 @@ impl Runtime {
 		handler: &mut H,
 	) -> Capture<ExitReason, Resolve<'a, H>> {
 		loop {
+			log::debug!(target: "evm", "run loop step");
 			step!(self, handler, return;)
 		}
 	}

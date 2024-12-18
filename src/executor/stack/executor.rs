@@ -432,11 +432,24 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet>
 				self.state.metadata_mut().gasometer.fail();
 				return Err(ExitError::CreateContractLimit);
 			}
-			return self
+
+			log::debug!(target: "evm", "pre maybe_record_init_code_cost: {}", self
+			.state
+			.metadata_mut()
+			.gasometer.gas());
+
+			let val = self
 				.state
 				.metadata_mut()
 				.gasometer
 				.record_cost(gasometer::init_code_cost(init_code));
+
+			log::debug!(target: "evm", "post maybe_record_init_code_cost: {}", self
+				.state
+				.metadata_mut()
+				.gasometer.gas());
+
+			return val;
 		}
 		Ok(())
 	}
@@ -702,8 +715,10 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet>
 			};
 		}
 
+		log::debug!(target: "evm", "create inner: start");
+
 		fn l64(gas: u64) -> u64 {
-			gas - gas / 64
+			gas - (gas / 64)
 		}
 
 		let address = self.create_address(scheme);
@@ -750,7 +765,11 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet>
 			self.state.metadata().gasometer.gas()
 		};
 
+		log::debug!(target: "evm", "create inner: mid 1: {:?}", target_gas);
+
 		let target_gas = target_gas.unwrap_or(after_gas);
+
+		log::debug!(target: "evm", "create inner: mid 2: {:?}", target_gas);
 
 		let gas_limit = min(after_gas, target_gas);
 		try_or_fail!(self.state.metadata_mut().gasometer.record_cost(gas_limit));
@@ -815,6 +834,8 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet>
 			self.config.stack_limit,
 			self.config.memory_limit,
 		);
+
+		log::debug!(target: "evm", "create inner: end");
 
 		Capture::Trap(StackExecutorCreateInterrupt(TaggedRuntime {
 			kind: RuntimeKind::Create(address),
@@ -1229,6 +1250,7 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 		init_code: Vec<u8>,
 		target_gas: Option<u64>,
 	) -> Capture<(ExitReason, Option<H160>, Vec<u8>), Self::CreateInterrupt> {
+		log::debug!(target: "evm", "stack executor create");
 		if let Err(e) = self.maybe_record_init_code_cost(&init_code) {
 			let reason: ExitReason = e.into();
 			emit_exit!(reason.clone());
@@ -1341,8 +1363,15 @@ impl<'config, 'precompiles, S: StackState<'config>, P: PrecompileSet> Handler
 			let gasometer = &mut self.state.metadata_mut().gasometer;
 			gasometer.record_dynamic_cost(gas_cost, memory_cost)?;
 
-			self.state
-				.record_external_dynamic_opcode_cost(opcode, gas_cost, target)?;
+			log::debug!(target: "evm", "post gas-left: {:?}", self.state.metadata().gasometer.gas());
+
+			let result = self
+				.state
+				.record_external_dynamic_opcode_cost(opcode, gas_cost, target);
+			if let Err(error) = result {
+				log::debug!(target: "evm", "record_external_dynamic_opcode_cost error: {:?}", error);
+				return Err(error);
+			}
 
 			match target {
 				StorageTarget::Address(address) => {
